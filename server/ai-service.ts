@@ -115,6 +115,69 @@ export class AIService {
   }
 
   /**
+   * Genera una respuesta utilizando documentos de contexto
+   * @param query La consulta o pregunta del usuario
+   * @param context El contexto adicional (instrucciones, documentos)
+   * @param options Opciones de configuración para la generación
+   */
+  async generateWithContext(
+    query: string, 
+    context: string, 
+    options: AIOptions = {}
+  ): Promise<AIResponse> {
+    try {
+      // Solo usar el servicio si tenemos la clave API
+      if (!process.env.OPENAI_API_KEY) {
+        return {
+          text: "No puedo responder a esa pregunta sin acceso a la IA.",
+          success: false,
+          source: 'fallback'
+        };
+      }
+
+      // Configurar opciones por defecto
+      const model = options.model || "gpt-3.5-turbo";
+      const temperature = options.temperature || 0.7;
+      const maxTokens = options.maxTokens || 500;
+
+      // Crear el prompt para la IA
+      const response = await openai.chat.completions.create({
+        model,
+        messages: [
+          {
+            role: "system",
+            content: 
+              "Eres un asistente muy útil y amable para personas mayores. " +
+              "Responde de manera clara, sencilla y con calidez. " +
+              "Utiliza la información proporcionada en el contexto para dar respuestas más precisas y útiles. " +
+              "Si la información no está en el contexto proporcionado, indica esto con claridad y responde lo mejor que puedas." +
+              "\n\nContexto:\n" + context
+          },
+          {
+            role: "user",
+            content: query
+          }
+        ],
+        temperature,
+        max_tokens: maxTokens
+      });
+
+      return {
+        text: response.choices[0].message.content || '',
+        success: true,
+        source: 'openai'
+      };
+    } catch (error) {
+      console.error("Error al generar respuesta con contexto:", error);
+      return {
+        text: "Lo siento, no puedo responder a esa pregunta en este momento.",
+        success: false,
+        source: 'fallback'
+      };
+    }
+  }
+
+  /**
    * Respuesta alternativa sin usar IA
    */
   private getFallbackResponse(transcript: string): AIResponse {

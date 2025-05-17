@@ -5,7 +5,17 @@ import { z } from "zod";
 import { insertTaskSchema, taskSchema } from "@shared/schema";
 import { ZodError } from "zod";
 import { fromZodError } from "zod-validation-error";
-import { analyzeText, generateResponse } from "./routes/ai";
+import { 
+  analyzeText, 
+  generateResponse,
+  uploadDocument, 
+  getDocuments, 
+  getDocument, 
+  deleteDocument,
+  getAssistantConfig,
+  updateAssistantConfig,
+  testAssistant
+} from "./routes/index";
 
 export async function registerRoutes(app: Express): Promise<Server> {
   // Get all tasks
@@ -120,6 +130,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Rutas de inteligencia artificial
   app.post("/api/ai/analyze", analyzeText);
   app.post("/api/ai/respond", generateResponse);
+  
+  // Rutas para documentos y configuración del asistente
+  app.post("/api/documents", uploadDocument);
+  app.get("/api/documents", getDocuments);
+  app.get("/api/documents/:id", getDocument);
+  app.delete("/api/documents/:id", deleteDocument);
+  
+  app.get("/api/assistant/config", getAssistantConfig);
+  app.post("/api/assistant/config", updateAssistantConfig);
+  app.post("/api/assistant/test", testAssistant);
 
   const httpServer = createServer(app);
 
