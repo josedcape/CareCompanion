@@ -117,6 +117,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Rutas de inteligencia artificial
+  app.post("/api/ai/analyze", analyzeText);
+  app.post("/api/ai/respond", generateResponse);
+
   const httpServer = createServer(app);
 
   return httpServer;

@@ -126,8 +126,28 @@ const VoiceDialog: React.FC<VoiceDialogProps> = ({ isOpen, onClose }) => {
       // Show success state
       setAssistantState("success");
       
-      // Success message
-      speak(`He creado un recordatorio para ${parsedTask.title} a las ${parsedTask.time.replace(':', ' y ')}.`);
+      // Generate natural response using AI
+      try {
+        // Crear un contexto descriptivo para la tarea
+        const taskContext = `${parsedTask.title} para el día ${new Date(parsedTask.date).toLocaleDateString('es-ES')} a las ${parsedTask.time.replace(':', ':')}. Categoría: ${parsedTask.category === 'medicine' ? 'medicina' : parsedTask.category === 'meal' ? 'comida' : 'general'}. Frecuencia: ${parsedTask.frequency === 'once' ? 'una vez' : parsedTask.frequency === 'daily' ? 'diario' : parsedTask.frequency === 'weekly' ? 'semanal' : 'mensual'}.`;
+        
+        // Obtener respuesta de IA
+        const aiResponse = await apiRequest("/api/ai/respond", {
+          method: "POST",
+          body: JSON.stringify({ context: taskContext }),
+        });
+        
+        // Usar respuesta de IA si está disponible, o respuesta predeterminada
+        if (aiResponse.success) {
+          speak(aiResponse.text);
+        } else {
+          speak(`He creado un recordatorio para ${parsedTask.title} a las ${parsedTask.time.replace(':', ' y ')}.`);
+        }
+      } catch (error) {
+        // Fallback si hay error con la API
+        speak(`He creado un recordatorio para ${parsedTask.title} a las ${parsedTask.time.replace(':', ' y ')}.`);
+        console.error("Error generando respuesta natural:", error);
+      }
       
       toast({
         title: "Recordatorio creado",
