@@ -1,7 +1,8 @@
-import { users, type User, type InsertUser, type Task, type InsertTask } from "@shared/schema";
+import { users, type User, type InsertUser, type Task, type InsertTask, tasks } from "@shared/schema";
+import { db } from "./db";
+import { eq, and, gte, desc, asc, or, gt } from "drizzle-orm";
 
-// modify the interface with any CRUD methods
-// you might need
+// Interface for storage implementation
 export interface IStorage {
   getUser(id: number): Promise<User | undefined>;
   getUserByUsername(username: string): Promise<User | undefined>;
@@ -16,108 +17,57 @@ export interface IStorage {
   getUpcomingTasks(userId: number): Promise<Task[]>;
 }
 
-export class MemStorage implements IStorage {
-  private users: Map<number, User>;
-  private tasks: Map<number, Task>;
-  private userIdCounter: number;
-  private taskIdCounter: number;
-
-  constructor() {
-    this.users = new Map();
-    this.tasks = new Map();
-    this.userIdCounter = 1;
-    this.taskIdCounter = 1;
-    
-    // Add some default tasks for demonstration
-    const currentDate = new Date().toISOString().split('T')[0];
-    
-    this.createTask({
-      title: "Tomar pastilla para la presión",
-      time: "09:00",
-      date: currentDate,
-      frequency: "daily",
-      category: "medicine",
-      userId: 1,
-      completed: false
-    });
-    
-    this.createTask({
-      title: "Hora de almuerzo",
-      time: "12:30",
-      date: currentDate,
-      frequency: "daily",
-      category: "meal",
-      userId: 1,
-      completed: false
-    });
-    
-    this.createTask({
-      title: "Llamar a María",
-      time: "16:00",
-      date: currentDate,
-      frequency: "once",
-      category: "general",
-      userId: 1,
-      completed: false
-    });
-  }
-
+// Database implementation using Drizzle ORM
+export class DatabaseStorage implements IStorage {
   async getUser(id: number): Promise<User | undefined> {
-    return this.users.get(id);
+    const result = await db.select().from(users).where(eq(users.id, id));
+    return result[0];
   }
 
   async getUserByUsername(username: string): Promise<User | undefined> {
-    return Array.from(this.users.values()).find(
-      (user) => user.username === username,
-    );
+    const result = await db.select().from(users).where(eq(users.username, username));
+    return result[0];
   }
 
   async createUser(insertUser: InsertUser): Promise<User> {
-    const id = this.userIdCounter++;
-    const user: User = { ...insertUser, id };
-    this.users.set(id, user);
-    return user;
+    const result = await db.insert(users).values(insertUser).returning();
+    return result[0];
   }
   
   async getTasks(userId: number): Promise<Task[]> {
-    return Array.from(this.tasks.values()).filter(
-      (task) => task.userId === userId
-    );
+    return db.select().from(tasks).where(eq(tasks.userId, userId));
   }
   
   async getTask(id: number): Promise<Task | undefined> {
-    return this.tasks.get(id);
+    const result = await db.select().from(tasks).where(eq(tasks.id, id));
+    return result[0];
   }
   
   async createTask(insertTask: InsertTask): Promise<Task> {
-    const id = this.taskIdCounter++;
-    const now = new Date();
-    const task: Task = { 
-      ...insertTask, 
-      id,
-      createdAt: now.toISOString()
-    };
-    this.tasks.set(id, task);
-    return task;
+    const result = await db.insert(tasks).values(insertTask).returning();
+    return result[0];
   }
   
   async updateTask(id: number, taskUpdate: Partial<Task>): Promise<Task> {
-    const task = this.tasks.get(id);
-    if (!task) {
+    const result = await db
+      .update(tasks)
+      .set(taskUpdate)
+      .where(eq(tasks.id, id))
+      .returning();
+    
+    if (result.length === 0) {
       throw new Error(`Task with id ${id} not found`);
     }
     
-    const updatedTask = { ...task, ...taskUpdate };
-    this.tasks.set(id, updatedTask);
-    return updatedTask;
+    return result[0];
   }
   
   async deleteTask(id: number): Promise<void> {
-    if (!this.tasks.has(id)) {
+    const result = await db.delete(tasks).where(eq(tasks.id, id)).returning({ id: tasks.id });
+    
+    if (result.length === 0) {
       throw new Error(`Task with id ${id} not found`);
     }
-    
-    this.tasks.delete(id);
   }
   
   async getUpcomingTasks(userId: number): Promise<Task[]> {
@@ -126,30 +76,33 @@ export class MemStorage implements IStorage {
     const currentTime = now.getHours().toString().padStart(2, '0') + ':' + 
                        now.getMinutes().toString().padStart(2, '0');
     
-    return Array.from(this.tasks.values())
-      .filter(task => {
-        // Filter by user
-        if (task.userId !== userId) return false;
-        
-        // Filter incomplete tasks
-        if (task.completed) return false;
-        
-        // Filter by date and time
-        if (task.date < currentDate) return false;
-        if (task.date === currentDate && task.time < currentTime) return false;
-        
-        return true;
-      })
-      .sort((a, b) => {
-        // Sort by date first
-        if (a.date !== b.date) {
-          return a.date.localeCompare(b.date);
-        }
-        
-        // Then by time
-        return a.time.localeCompare(b.time);
-      });
+    return db
+      .select()
+      .from(tasks)
+      .where(
+        and(
+          eq(tasks.userId, userId),
+          eq(tasks.completed, false),
+          and(
+            gte(tasks.date, currentDate),
+            or(
+              // If the date is greater, include it
+              // If the date is the same, only include if time is greater or equal
+              gt(tasks.date, currentDate),
+              and(
+                eq(tasks.date, currentDate),
+                gte(tasks.time, currentTime)
+              )
+            )
+          )
+        )
+      )
+      .orderBy(
+        asc(tasks.date),
+        asc(tasks.time)
+      );
   }
 }
 
-export const storage = new MemStorage();
+// Create and export a default instance with sample data
+export const storage = new DatabaseStorage();
