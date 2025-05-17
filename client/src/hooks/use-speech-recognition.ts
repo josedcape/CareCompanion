@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { parseTaskFromSpeech } from "@/lib/utils";
 import { Task } from "@shared/schema";
-import { apiRequest } from "@/lib/queryClient";
+import { analyzeText } from "@/lib/ai-client";
 
 interface SpeechRecognitionResult {
   isListening: boolean;
@@ -13,7 +13,7 @@ interface SpeechRecognitionResult {
 }
 
 // Check if the browser supports the Web Speech API
-const SpeechRecognition = window.SpeechRecognition || (window as any).webkitSpeechRecognition;
+const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
 const hasSpeechRecognition = !!SpeechRecognition;
 
 export function useSpeechRecognition(): SpeechRecognitionResult {
@@ -53,7 +53,7 @@ export function useSpeechRecognition(): SpeechRecognitionResult {
       // Parse the speech using AI to extract task information
       const analyzeWithAI = async (text: string) => {
         try {
-          const aiResponse = await apiRequest("POST", "/api/ai/analyze", { text });
+          const aiResponse = await analyzeText(text);
           
           if (aiResponse.success && aiResponse.source === 'openai') {
             try {

@@ -6,6 +6,7 @@ import { useSpeechRecognition } from "@/hooks/use-speech-recognition";
 import { useTextToSpeech } from "@/hooks/use-text-to-speech";
 import { insertTaskSchema, TASK_CATEGORIES } from "@shared/schema";
 import { apiRequest } from "@/lib/queryClient";
+import { generateResponse } from "@/lib/ai-client";
 import { useQueryClient } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
 import { z } from "zod";
@@ -128,24 +129,25 @@ const VoiceDialog: React.FC<VoiceDialogProps> = ({ isOpen, onClose }) => {
       
       // Generate natural response using AI
       try {
-        // Crear un contexto descriptivo para la tarea
-        const taskContext = `${parsedTask.title} para el día ${new Date(parsedTask.date).toLocaleDateString('es-ES')} a las ${parsedTask.time.replace(':', ':')}. Categoría: ${parsedTask.category === 'medicine' ? 'medicina' : parsedTask.category === 'meal' ? 'comida' : 'general'}. Frecuencia: ${parsedTask.frequency === 'once' ? 'una vez' : parsedTask.frequency === 'daily' ? 'diario' : parsedTask.frequency === 'weekly' ? 'semanal' : 'mensual'}.`;
-        
-        // Obtener respuesta de IA
-        const aiResponse = await apiRequest("/api/ai/respond", {
-          method: "POST",
-          body: JSON.stringify({ context: taskContext }),
-        });
-        
-        // Usar respuesta de IA si está disponible, o respuesta predeterminada
-        if (aiResponse.success) {
-          speak(aiResponse.text);
+        if (parsedTask.title && parsedTask.date && parsedTask.time) {
+          // Crear un contexto descriptivo para la tarea
+          const taskContext = `${parsedTask.title} para el día ${new Date(parsedTask.date).toLocaleDateString('es-ES')} a las ${parsedTask.time.replace(':', ':')}. Categoría: ${parsedTask.category === 'medicine' ? 'medicina' : parsedTask.category === 'meal' ? 'comida' : 'general'}. Frecuencia: ${parsedTask.frequency === 'once' ? 'una vez' : parsedTask.frequency === 'daily' ? 'diario' : parsedTask.frequency === 'weekly' ? 'semanal' : 'mensual'}.`;
+          
+          // Obtener respuesta de IA
+          const aiResponse = await generateResponse(taskContext);
+          
+          // Usar respuesta de IA si está disponible, o respuesta predeterminada
+          if (aiResponse.success) {
+            speak(aiResponse.text);
+          } else {
+            speak(`He creado un recordatorio para ${parsedTask.title} a las ${parsedTask.time.replace(':', ' y ')}.`);
+          }
         } else {
-          speak(`He creado un recordatorio para ${parsedTask.title} a las ${parsedTask.time.replace(':', ' y ')}.`);
+          speak(`He creado tu recordatorio exitosamente.`);
         }
       } catch (error) {
         // Fallback si hay error con la API
-        speak(`He creado un recordatorio para ${parsedTask.title} a las ${parsedTask.time.replace(':', ' y ')}.`);
+        speak(`He creado un recordatorio para ti.`);
         console.error("Error generando respuesta natural:", error);
       }
       
@@ -302,7 +304,9 @@ const VoiceDialog: React.FC<VoiceDialogProps> = ({ isOpen, onClose }) => {
       case "confirming":
         return {
           title: "¿Confirmar recordatorio?",
-          message: parsedTask ? `${parsedTask.title} - ${parsedTask.time.replace(':', ':')}` : pendingText
+          message: parsedTask && parsedTask.title && parsedTask.time 
+            ? `${parsedTask.title} - ${parsedTask.time.replace(':', ':')}` 
+            : pendingText
         };
       case "success":
         return {
@@ -355,26 +359,26 @@ const VoiceDialog: React.FC<VoiceDialogProps> = ({ isOpen, onClose }) => {
             {assistantState === "confirming" && parsedTask && (
               <div className="text-left bg-background/40 rounded-xl p-3 mb-4 backdrop-blur-sm">
                 <div className="grid grid-cols-2 gap-2 text-sm text-muted-foreground">
-                  {parsedTask.time && (
+                  {parsedTask && parsedTask.time && (
                     <div className="flex items-center">
                       <Icon name="schedule" className="mr-1 text-primary/70 text-sm" />
                       <span>Hora: {parsedTask.time.replace(':', ':')}</span>
                     </div>
                   )}
-                  {parsedTask.date && (
+                  {parsedTask && parsedTask.date && (
                     <div className="flex items-center">
                       <Icon name="today" className="mr-1 text-primary/70 text-sm" />
                       <span>Fecha: {new Date(parsedTask.date).toLocaleDateString('es-ES')}</span>
                     </div>
                   )}
-                  {parsedTask.category && (
+                  {parsedTask && parsedTask.category && (
                     <div className="flex items-center">
                       <CategoryIcon category={parsedTask.category} className="mr-1 text-sm" />
                       <span>Categoría: {parsedTask.category === 'medicine' ? 'Medicina' : 
                         parsedTask.category === 'meal' ? 'Comida' : 'General'}</span>
                     </div>
                   )}
-                  {parsedTask.frequency && (
+                  {parsedTask && parsedTask.frequency && (
                     <div className="flex items-center">
                       <Icon name="repeat" className="mr-1 text-primary/70 text-sm" />
                       <span>Frecuencia: {
