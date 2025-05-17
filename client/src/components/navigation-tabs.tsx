@@ -14,7 +14,8 @@ const NavigationTabs: React.FC<NavigationTabsProps> = ({
   const tabs = [
     { id: "home", icon: "home", label: "Inicio" },
     { id: "tasks", icon: "list", label: "Tareas" },
-    { id: "profile", icon: "person", label: "Perfil" }
+    { id: "profile", icon: "person", label: "Perfil" },
+    { id: "settings", icon: "settings", label: "Config" }
   ];
 
   return (

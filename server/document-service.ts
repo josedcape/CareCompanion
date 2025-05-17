@@ -1,6 +1,6 @@
 import * as fs from 'fs';
 import * as path from 'path';
-import * as pdfParse from 'pdf-parse';
+import pdfParse from 'pdf-parse';
 import * as mammoth from 'mammoth';
 
 // Directorio para almacenar los documentos cargados
@@ -74,7 +74,7 @@ export class DocumentService {
       return pdfData.text;
     } catch (error) {
       console.error('Error extrayendo texto de PDF:', error);
-      throw new Error(`Error al procesar archivo PDF: ${error.message}`);
+      throw new Error(`Error al procesar archivo PDF: ${error instanceof Error ? error.message : String(error)}`);
     }
   }
   

@@ -5,6 +5,7 @@ import NavigationTabs from "@/components/navigation-tabs";
 import Home from "@/pages/home";
 import Tasks from "@/pages/tasks";
 import Profile from "@/pages/profile";
+import AssistantConfig from "@/pages/assistant-config";
 import NotFound from "@/pages/not-found";
 
 function App() {
@@ -43,6 +44,7 @@ function App() {
           {activeTab === "home" && <Home />}
           {activeTab === "tasks" && <Tasks />}
           {activeTab === "profile" && <Profile />}
+          {activeTab === "settings" && <AssistantConfig />}
         </Route>
         <Route component={NotFound} />
       </Switch>
