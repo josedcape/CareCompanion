@@ -15,6 +15,12 @@ interface AIResponse {
   source: 'openai' | 'fallback';
 }
 
+interface AIOptions {
+  model?: string;
+  temperature?: number;
+  maxTokens?: number;
+}
+
 /**
  * Servicio de inteligencia artificial para mejorar la interacción por voz
  */
