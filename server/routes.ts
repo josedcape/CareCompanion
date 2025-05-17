@@ -5,6 +5,7 @@ import { z } from "zod";
 import { insertTaskSchema, taskSchema } from "@shared/schema";
 import { ZodError } from "zod";
 import { fromZodError } from "zod-validation-error";
+import { analyzeText, generateResponse } from "./routes/ai";
 
 export async function registerRoutes(app: Express): Promise<Server> {
   // Get all tasks
